@@ -10,7 +10,7 @@ public partial class Terrain : Node3D
 	[Export] Noise noise;
 	[Export] Material material;
 	Vector3I playerPosition;
-	int loadRadius = 4;
+	int loadRadius = 12;
 
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()

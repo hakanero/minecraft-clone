@@ -42,12 +42,17 @@ static internal class ChunkManager
         chunks.Remove(chunk.position);
     }
 
-    private static Task<Action>[] generationTasks = new Task<Action>[10];
-    public static async void generateNextChunk()
+    private static Task<Action>[] generationTasks = new Task<Action>[12];
+    public static void generateNextChunk()
     {
         for (int i = 0; i<generationTasks.Length;i++)
         {
             Task<Action> task = generationTasks[i];
+            if(task != null && task.IsCompleted)
+            {
+                task.Result();
+                generationTasks[i] = null;
+            }
             if ((task==null || task.IsCompleted) && generateQueue.Count > 0)
             {
                 Chunk c = generateQueue.Dequeue();
@@ -55,7 +60,6 @@ static internal class ChunkManager
                     c.Generate();
                     return new Action(c.afterGenerate);
                 });
-                (await task)();
             }
         }
         
