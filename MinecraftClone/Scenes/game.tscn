@@ -1,0 +1,54 @@
+[gd_scene load_steps=8 format=3 uid="uid://cio36pe4qxebx"]
+
+[ext_resource type="Script" path="res://Scripts/Terrain.cs" id="1_lpg8n"]
+[ext_resource type="Script" path="res://Scripts/Camera.gd" id="1_xb7me"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6umuq"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vhxk5"]
+albedo_color = Color(0, 0.694118, 0.0627451, 1)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tpttx"]
+sky_top_color = Color(0.458824, 0.611765, 0.839216, 1)
+sky_horizon_color = Color(0, 0.694118, 0.980392, 1)
+ground_bottom_color = Color(0.0392157, 0, 0.34902, 1)
+ground_horizon_color = Color(0, 0.694118, 0.980392, 1)
+ground_curve = 0.367585
+sun_angle_max = 34.55
+sun_curve = 0.197927
+
+[sub_resource type="Sky" id="Sky_h6mo5"]
+sky_material = SubResource("ProceduralSkyMaterial_tpttx")
+
+[sub_resource type="Environment" id="Environment_crd8w"]
+background_mode = 2
+sky = SubResource("Sky_h6mo5")
+ambient_light_source = 3
+ambient_light_color = Color(0.427451, 0.427451, 0.427451, 1)
+ambient_light_energy = 0.1
+fog_enabled = true
+fog_light_color = Color(0, 0.694118, 0.980392, 1)
+fog_sky_affect = 0.0
+volumetric_fog_albedo = Color(0, 0.694118, 0.980392, 1)
+volumetric_fog_sky_affect = 0.2
+
+[node name="Game" type="Node"]
+
+[node name="Player" type="Camera3D" parent="."]
+script = ExtResource("1_xb7me")
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("1_lpg8n")
+playerNode = NodePath("../Player")
+noise = SubResource("FastNoiseLite_6umuq")
+material = SubResource("StandardMaterial3D_vhxk5")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0)
+
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 0, 0, 0)
+light_energy = 0.3
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_crd8w")
