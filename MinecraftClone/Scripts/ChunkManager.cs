@@ -12,7 +12,7 @@ static internal class ChunkManager
 {
     static readonly Dictionary<Vector2I, Chunk> chunks = new();
     static readonly Queue<Chunk> generateQueue = new();
-    static bool generateWorking = false;
+    static readonly Dictionary<Vector3I, Modification> modifications = new();
     public static Material material;
 
     /// <summary>
@@ -30,6 +30,42 @@ static internal class ChunkManager
             return true;
         }
         return false;
+    }
+
+    public static bool isModificated(Vector3I blockPosition)
+    {
+        return modifications.ContainsKey(blockPosition);
+    }
+
+    public static Modification getModification(Vector3I blockPosition)
+    {
+        return modifications[blockPosition];
+    }
+
+    public static void addModification(Vector3I blockPosition,  Modification modification)
+    {
+        modifications.Add(blockPosition, modification);
+        regenerateChunk(blockPosition);
+    }
+
+    public static void changeModificiation(Vector3I blockPosition, Modification modification)
+    {
+        modifications[blockPosition] = modification;
+        //regenerateChunk(blockPosition);
+    }
+
+    static void regenerateChunk(Vector2I chunkPosition)
+    {
+        generateQueue.Enqueue(chunks[chunkPosition]);
+    }
+
+    static void regenerateChunk(Vector3I blockPosition)
+    {
+        int x = blockPosition.X;
+        int y = blockPosition.Z;
+        x /= Chunk.chunkSize; 
+        y /= Chunk.chunkSize;
+        regenerateChunk(new Vector2I(x, y));
     }
 
     public static void addChunk(Chunk chunk)
@@ -63,5 +99,10 @@ static internal class ChunkManager
             }
         }
         
+    }
+    public struct Modification
+    {
+        public bool isABlock;
+        public String newBlock;
     }
 }

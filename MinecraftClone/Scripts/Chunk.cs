@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public partial class Chunk : Node3D
 {
     MeshInstance3D meshInstance;
+    CollisionShape3D collisionShapeNode;
     public Vector2I position;
     //static FastNoise noise = FastNoise.FromEncodedNodeTree("CQA=");
 
@@ -23,6 +24,15 @@ public partial class Chunk : Node3D
     public override void _Ready()
     {
         GlobalPosition = new Vector3(position.X * chunkSize, 0, position.Y * chunkSize);
+
+        collisionShapeNode = new();
+        var staticBody = new StaticBody3D();
+        staticBody.AddChild(collisionShapeNode);
+        AddChild(staticBody);
+
+        meshInstance = new();
+        meshInstance.MaterialOverride = ChunkManager.material;
+        AddChild(meshInstance);
     }
     public override void _Process(double delta)
     {
@@ -41,7 +51,7 @@ public partial class Chunk : Node3D
         timeSinceVisit = 0;
     }
 
-    int noiseOffsetX = 0, noiseOffsetY = -chunkHeight/2, noiseOffsetZ = 0;
+    Vector3I noiseOffset = new Vector3I(0, -chunkHeight/2, 0);
     public void Generate()
     {
         //Generate the chunk
@@ -59,12 +69,13 @@ public partial class Chunk : Node3D
         
         st.Begin(Mesh.PrimitiveType.Triangles);
 
-        bool isBlock(int x, int y, int z)
+        bool isBlock(Vector3I blockPosition)
         {
 
             //if (x > chunkSize || y > chunkHeight || z > chunkSize || x < 0 || y < 0 || z < 0) return true;
 
-            float n = noise.GenSingle3D((position.X * chunkSize + x + noiseOffsetX) * mm, (y+noiseOffsetY) * mm, (position.Y * chunkSize + z + noiseOffsetZ) * mm, 0);
+            Vector3 noiseVector = (blockPosition + noiseOffset);
+            float n = noise.GenSingle3D(noiseVector.X * mm, noiseVector.Y * mm, noiseVector.Z * mm, 0);
             if (n < 0f)
             {
                 return true;
@@ -73,10 +84,24 @@ public partial class Chunk : Node3D
             return false;
         }
 
-        bool isBlockDir(int x, int y, int z, Directions dir)
+        String getBlockType(Vector3I blockPosition)
         {
-            Vector3I adder = directionVectors[dir];
-            return isBlock(x + adder.X, y + adder.Y, z + adder.Z);
+            Vector3 noiseVector = (blockPosition + noiseOffset);
+            float t = noise.GenSingle3D(noiseVector.X * mm, noiseVector.Y * mm,noiseVector.Z * mm , 1337);
+            if (t < .7f)
+                return "Grass";
+            else
+                return "Stone";
+        }
+
+        bool isBlockDir(Vector3I blockPosition, Directions dir)
+        {
+            return isBlock(blockPosition + directionVectors[dir]);
+        }
+
+        Vector3I getBlockPositionWorld(int x, int y, int z)
+        {
+            return new Vector3I(position.X* chunkSize + x, y, position.Y*chunkSize +z);
         }
 
         for (int y = 0; y < chunkHeight; y++)
@@ -85,13 +110,31 @@ public partial class Chunk : Node3D
             {
                 for (int z = 0; z < chunkSize; z++)
                 {
-                    if(isBlock(x,y,z))
+                    var bpw = getBlockPositionWorld(x, y, z);
+
+                    if (ChunkManager.isModificated(bpw))
                     {
+                        var modification = ChunkManager.getModification(bpw);
+                        if (modification.isABlock)
+                        {
+                            foreach (var dir in listOfDirections)
+                            {
+                                if (!isBlockDir(bpw, dir))
+                                {
+                                    k = AddFace(dir, st, k, new Vector3(x, y, z), modification.newBlock);
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                    if (isBlock(bpw))
+                    {
+                        string blockType = getBlockType(bpw);
                         foreach (var dir in listOfDirections)
                         {
-                            if (!isBlockDir(x, y, z, dir))
+                            if (!isBlockDir(bpw, dir))
                             {
-                                k = AddFace(dir, st, k, new Vector3(x, y, z));
+                                k = AddFace(dir, st, k, new Vector3(x, y, z), blockType);
                             }
                         }
                     }
@@ -100,23 +143,23 @@ public partial class Chunk : Node3D
         }
 
         mesh = st.Commit();
-
-        generated = true;
-        
+        collisionShape = mesh.CreateTrimeshShape();
         //GD.Print("generated chunk @ "+position.ToString());
     }
     Mesh mesh;
+    ConcavePolygonShape3D collisionShape;
     public void afterGenerate()
     {
-        meshInstance = new();
-        meshInstance.MaterialOverride = ChunkManager.material;
+        
         meshInstance.Mesh = mesh;
-        AddChild(meshInstance);
+        collisionShapeNode.Shape = collisionShape;
+
+        generated = true;
     }
 
 
 
-    enum Directions : byte
+    public enum Directions : byte
     {
         Top,
         Bottom,
@@ -138,7 +181,7 @@ public partial class Chunk : Node3D
         {Directions.Backward, new Vector3I(0, 0, -1)},
     };
 
-    int AddFace(Directions faceDirection, SurfaceTool st, int k, Vector3 cubePosition)
+    int AddFace(Directions faceDirection, SurfaceTool st, int k, Vector3 cubePosition, String blockType)
     {
         int[,] adders;
         switch (faceDirection)
@@ -169,12 +212,16 @@ public partial class Chunk : Node3D
         {
             return new Vector3(adders[i, 0], adders[i, 1], adders[i, 2]);
         }
+
+        var UVs = TextureManager.getUVs(blockType, faceDirection);
+
         st.SetNormal(directionVectors[faceDirection]);
         
-        st.AddVertex(getAdder(0) * .5f + cubePosition);
-        st.AddVertex(getAdder(1) * .5f + cubePosition);
-        st.AddVertex(getAdder(2) * .5f + cubePosition);
-        st.AddVertex(getAdder(3) * .5f + cubePosition);
+        for (int i = 0; i < 4; i++)
+        {
+            st.SetUV(UVs[i]);
+            st.AddVertex(getAdder(i) * .5f + cubePosition);
+        }
 
         st.AddIndex(k);
         st.AddIndex(k + 1);
