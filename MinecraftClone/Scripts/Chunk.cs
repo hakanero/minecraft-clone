@@ -73,7 +73,8 @@ public partial class Chunk : Node3D
         {
 
             //if (x > chunkSize || y > chunkHeight || z > chunkSize || x < 0 || y < 0 || z < 0) return true;
-
+            if (ChunkManager.isModificated(blockPosition))
+                return ChunkManager.getModification(blockPosition).isABlock;
             Vector3 noiseVector = (blockPosition + noiseOffset);
             float n = noise.GenSingle3D(noiseVector.X * mm, noiseVector.Y * mm, noiseVector.Z * mm, 0);
             if (n < 0f)
