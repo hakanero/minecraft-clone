@@ -90,6 +90,8 @@ environment = SubResource("Environment_crd8w")
 
 [node name="CharacterBody3D" type="CharacterBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 200, 0)
+collision_layer = 2
+input_ray_pickable = false
 script = ExtResource("5_wxyvd")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="CharacterBody3D"]
